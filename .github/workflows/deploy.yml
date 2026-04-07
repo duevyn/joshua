@@ -95,7 +95,7 @@ jobs:
         env:
           FULL_IMAGE: ${{ needs.build-and-push.outputs.full_image }}
         run: |
-          envsubst '${FULL_IMAGE}' < k8s/server.yaml | kubectl apply -f -
+          envsubst '${FULL_IMAGE}' < k8s/server.yml | kubectl apply -f -
 
           kubectl rollout status deployment/joshua-server-pod \
             --timeout=300s
