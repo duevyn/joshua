@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: joshua-server-pod
+  labels:
+    app: joshua
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: joshua
+  template:
+    metadata:
+      labels:
+        app: joshua
+    spec:
+      containers:
+        - name: joshua-server
+          image: ${FULL_IMAGE}
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: joshua-server-lb
+spec:
+  type: LoadBalancer
+  selector:
+    app: joshua
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
