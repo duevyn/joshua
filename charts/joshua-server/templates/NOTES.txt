@@ -1,0 +1,10 @@
+joshua-server {{ .Chart.AppVersion }} deployed.
+
+{{- if .Values.ingress.enabled }}
+
+Get the ALB hostname (takes ~2 min to provision):
+  kubectl get ingress {{ include "joshua-server.fullname" . }} -n {{ .Release.Namespace }} \
+    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+{{- else }}
+  kubectl port-forward svc/{{ include "joshua-server.fullname" . }} 8080:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+{{- end }}
