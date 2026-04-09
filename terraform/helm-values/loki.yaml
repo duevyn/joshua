@@ -1,0 +1,50 @@
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    storageClass: gp3
+    size: 20Gi
+
+# Disable components not used in SingleBinary mode
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+gateway:
+  enabled: false
+
+test:
+  enabled: false
+
+lokiCanary:
+  enabled: false
+
+# Disable external memcached caching — Loki's readiness probe requires
+# memcached to be reachable before passing. In SingleBinary mode the
+# in-process cache is sufficient; external caching is for multi-replica
+# production deployments.
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false

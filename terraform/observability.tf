@@ -127,6 +127,8 @@ resource "helm_release" "aws_load_balancer_controller" {
   version    = "1.13.0"
   namespace  = "kube-system"
 
+  depends_on = [module.eks]
+
   set {
     name  = "clusterName"
     value = module.eks.cluster_name
@@ -168,8 +170,10 @@ resource "helm_release" "loki" {
   chart      = "loki"
   version    = "6.30.1"
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
-
-  depends_on = [kubernetes_storage_class_v1.gp3]
+  depends_on = [
+    kubernetes_storage_class_v1.gp3,
+    helm_release.kube_prometheus_stack,
+  ]
 
   values = [file("${path.module}/helm-values/loki.yaml")]
 }
@@ -185,7 +189,10 @@ resource "helm_release" "tempo" {
   version    = "1.21.1"
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
-  depends_on = [kubernetes_storage_class_v1.gp3]
+  depends_on = [
+    kubernetes_storage_class_v1.gp3,
+    helm_release.kube_prometheus_stack,
+  ]
 
   values = [file("${path.module}/helm-values/tempo.yaml")]
 }
@@ -208,8 +215,6 @@ resource "helm_release" "kube_prometheus_stack" {
 
   depends_on = [
     kubernetes_storage_class_v1.gp3,
-    helm_release.loki,
-    helm_release.tempo,
     kubernetes_secret.grafana_admin,
     helm_release.aws_load_balancer_controller,
   ]
@@ -245,13 +250,18 @@ resource "helm_release" "otel_collector" {
 # Outputs
 # =============================================================================
 
-output "grafana_url" {
-  description = "ALB DNS for Grafana (available ~2 min after apply)"
-  value       = "kubectl get ingress -n monitoring -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'"
+output "grafana_port_forward" {
+  description = "Port-forward command to access Grafana locally at http://localhost:3000"
+  value       = "kubectl port-forward svc/kube-prometheus-stack-grafana 3000:80 -n monitoring"
 }
 
-output "grafana_admin_password_command" {
-  description = "Retrieve Grafana admin password from Kubernetes secret"
-  value       = "kubectl get secret grafana-admin-credentials -n monitoring -o jsonpath='{.data.admin-password}' | base64 -d"
-  sensitive   = false
+output "server_port_forward" {
+  description = "Port-forward command to access joshua-server locally at http://localhost:8080"
+  value       = "kubectl port-forward svc/joshua-server 8080:80"
+}
+
+output "grafana_admin_password" {
+  description = "Grafana admin password"
+  value       = random_password.grafana_admin.result
+  sensitive   = true
 }
