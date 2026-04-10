@@ -127,37 +127,16 @@ resource "helm_release" "aws_load_balancer_controller" {
   version    = "1.13.0"
   namespace  = "kube-system"
 
+  values = [
+    templatefile("${path.module}/helm-values/aws-load-balancer-controller.yaml.tpl", {
+      cluster_name = module.eks.cluster_name
+      region       = "us-west-2"
+      vpc_id       = module.vpc.vpc_id
+      role_arn     = module.aws_load_balancer_controller_irsa.iam_role_arn
+    })
+  ]
+
   depends_on = [module.eks]
-
-  set {
-    name  = "clusterName"
-    value = module.eks.cluster_name
-  }
-
-  set {
-    name  = "serviceAccount.create"
-    value = "true"
-  }
-
-  set {
-    name  = "serviceAccount.name"
-    value = "aws-load-balancer-controller"
-  }
-
-  set {
-    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = module.aws_load_balancer_controller_irsa.iam_role_arn
-  }
-
-  set {
-    name  = "region"
-    value = "us-west-2"
-  }
-
-  set {
-    name  = "vpcId"
-    value = module.vpc.vpc_id
-  }
 }
 
 # =============================================================================

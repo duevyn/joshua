@@ -110,5 +110,5 @@ jobs:
             -p 8080:8080 \
             joshua-server:${{ github.sha }}
           sleep 3
-          curl --fail http://localhost:8080/healthz
+          curl --fail -v http://localhost:8080/healthz
           docker rm -f smoke

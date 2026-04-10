@@ -27,20 +27,51 @@ config:
       timeout: 2s
 
   exporters:
+    # Metrics → Prometheus via remote_write. The collector's built-in
+    # remote_write_queue (enabled by default) handles backpressure; we
+    # leave it at chart defaults.
     prometheusremotewrite:
       endpoint: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
       tls:
         insecure: true
+      resource_to_telemetry_conversion:
+        enabled: true
 
+    # Traces → Tempo via OTLP/gRPC. sending_queue + retry_on_failure
+    # protect against transient Tempo unavailability without dropping
+    # spans on the floor.
     otlp/tempo:
       endpoint: "tempo.monitoring.svc.cluster.local:4317"
       tls:
         insecure: true
+      sending_queue:
+        enabled: true
+        num_consumers: 4
+        queue_size: 1000
+      retry_on_failure:
+        enabled: true
+        initial_interval: 5s
+        max_interval: 30s
+        max_elapsed_time: 300s
 
-    loki:
-      endpoint: "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+    # Logs → Loki via OTLP/HTTP. Loki 3.x exposes a native OTLP receiver
+    # at /otlp/v1/logs; the otlphttp exporter automatically appends
+    # /v1/logs to the configured endpoint. The deprecated standalone
+    # `loki` exporter is intentionally not used — `otlphttp` against
+    # native OTLP is the migration path documented by both projects.
+    otlphttp/loki:
+      endpoint: "http://loki.monitoring.svc.cluster.local:3100/otlp"
       tls:
         insecure: true
+      sending_queue:
+        enabled: true
+        num_consumers: 4
+        queue_size: 1000
+      retry_on_failure:
+        enabled: true
+        initial_interval: 5s
+        max_interval: 30s
+        max_elapsed_time: 300s
 
     debug:
       verbosity: basic
@@ -58,7 +89,7 @@ config:
       logs:
         receivers: [otlp]
         processors: [memory_limiter, resourcedetection, batch]
-        exporters: [loki, debug]
+        exporters: [otlphttp/loki, debug]
 
 ports:
   otlp:
