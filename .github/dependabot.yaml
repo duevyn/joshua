@@ -5,9 +5,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "wednesday"
+      day: "friday"
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "wednesday"
+      day: "friday"

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: joshua-server
+description: HTTP server with OpenTelemetry instrumentation
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

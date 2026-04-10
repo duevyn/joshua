@@ -5,10 +5,10 @@ on:
     branches: [main]
     paths:
       - "cmd/**"
-      - "k8s/**"
+      - "charts/**"
       - "go.mod"
       - "go.sum"
-      - ".github/workflows/deploy.yml"
+      - ".github/workflows/deploy.yaml"
 
 concurrency:
   group: deploy-dev
@@ -30,7 +30,7 @@ jobs:
     environment: dev
     outputs:
       image_tag: ${{ steps.meta.outputs.sha_short }}
-      full_image: ${{ steps.meta.outputs.full_image }}
+      ecr_registry: ${{ steps.ecr-login.outputs.registry }}
 
     steps:
       - name: Checkout code
@@ -51,9 +51,7 @@ jobs:
         id: meta
         run: |
           SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
-          FULL_IMAGE=${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${SHA_SHORT}
           echo "sha_short=${SHA_SHORT}" >> "$GITHUB_OUTPUT"
-          echo "full_image=${FULL_IMAGE}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2
@@ -66,7 +64,7 @@ jobs:
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: ${{ steps.meta.outputs.full_image }}
+          tags: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.sha_short }}
 
   deploy:
     name: Deploy to EKS
@@ -85,6 +83,11 @@ jobs:
           role-session-name: deploy-${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Install Helm
+        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+        with:
+          version: "3.17.3"
+
       - name: Update kubeconfig
         run: |
           aws eks update-kubeconfig \
@@ -92,13 +95,15 @@ jobs:
             --name ${{ env.EKS_CLUSTER_NAME }}
 
       - name: Deploy to Kubernetes
-        env:
-          FULL_IMAGE: ${{ needs.build-and-push.outputs.full_image }}
         run: |
-          envsubst '${FULL_IMAGE}' < k8s/server.yml | kubectl apply -f -
-
-          kubectl rollout status deployment/joshua-server-pod \
-            --timeout=300s
+          helm upgrade --install joshua-server ./charts/joshua-server \
+            --namespace default \
+            --set image.repository=${{ needs.build-and-push.outputs.ecr_registry }}/${{ env.ECR_REPOSITORY }} \
+            --set image.tag=${{ needs.build-and-push.outputs.image_tag }} \
+            --set otel.environment=dev \
+            --atomic \
+            --timeout 5m \
+            --wait
 
       - name: Verify deployment
         if: success()

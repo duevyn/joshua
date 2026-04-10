@@ -1,0 +1,101 @@
+fullnameOverride: otel-collector
+
+mode: deployment
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+
+  processors:
+    memory_limiter:
+      check_interval: 5s
+      limit_percentage: 80
+      spike_limit_percentage: 25
+    batch:
+      send_batch_size: 512
+      timeout: 5s
+    resourcedetection:
+      detectors: [env, ec2]
+      timeout: 2s
+
+  exporters:
+    prometheusremotewrite:
+      endpoint: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+      tls:
+        insecure: true
+      resource_to_telemetry_conversion:
+        enabled: true
+
+    otlp/tempo:
+      endpoint: "tempo.monitoring.svc.cluster.local:4317"
+      tls:
+        insecure: true
+      sending_queue:
+        enabled: true
+        num_consumers: 4
+        queue_size: 1000
+      retry_on_failure:
+        enabled: true
+        initial_interval: 5s
+        max_interval: 30s
+        max_elapsed_time: 300s
+
+    otlphttp/loki:
+      endpoint: "http://loki.monitoring.svc.cluster.local:3100/otlp"
+      tls:
+        insecure: true
+      sending_queue:
+        enabled: true
+        num_consumers: 4
+        queue_size: 1000
+      retry_on_failure:
+        enabled: true
+        initial_interval: 5s
+        max_interval: 30s
+        max_elapsed_time: 300s
+
+    debug:
+      verbosity: basic
+
+  service:
+    pipelines:
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, resourcedetection, batch]
+        exporters: [prometheusremotewrite, debug]
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, resourcedetection, batch]
+        exporters: [otlp/tempo, debug]
+      logs:
+        receivers: [otlp]
+        processors: [memory_limiter, resourcedetection, batch]
+        exporters: [otlphttp/loki, debug]
+
+ports:
+  otlp:
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+    protocol: TCP
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+    protocol: TCP
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
