@@ -19,7 +19,7 @@ loki:
   # ---- OTLP ingestion ----
   # Loki 3.x exposes a native OTLP HTTP receiver at /otlp/v1/logs without
   # additional opt-in. The collector pushes to it via the otlphttp exporter
-  # (see otel-collector.yaml) — the deprecated standalone `loki` exporter
+  # (see otel-collector.yml) — the deprecated standalone `loki` exporter
   # is intentionally not used.
   #
   # allow_structured_metadata is REQUIRED for OTLP writes: any OTLP

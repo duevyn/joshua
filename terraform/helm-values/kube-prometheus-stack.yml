@@ -21,7 +21,7 @@ kubeProxy:
   enabled: false
 
 grafana:
-  adminPassword: ""  # unused — existingSecret below overrides
+  adminPassword: "" # unused — existingSecret below overrides
   admin:
     existingSecret: grafana-admin-credentials
     userKey: admin-user
@@ -58,7 +58,7 @@ grafana:
           filterBySpanID: false
         # serviceMap powers the topology view in the Tempo UI. It reads
         # service-graph metrics that Tempo's metricsGenerator writes to
-        # Prometheus. The generator is NOT enabled in tempo.yaml yet, so
+        # Prometheus. The generator is NOT enabled in tempo.yml yet, so
         # this view will be empty until that's added in a future iteration.
         serviceMap:
           datasourceUid: prometheus
