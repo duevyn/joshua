@@ -48,7 +48,7 @@ resource "kubernetes_namespace" "monitoring" {
 }
 
 # =============================================================================
-# Storage classes (replaces k8s/storage.yml manual step)
+# Storage classes (replaces k8s/storage.yaml manual step)
 #
 # gp3 is cheaper and faster than the gp2 StorageClass EKS ships with.
 # kubernetes_storage_class_v1 creates the gp3 class; kubernetes_annotations
@@ -128,7 +128,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   namespace  = "kube-system"
 
   values = [
-    templatefile("${path.module}/helm-values/aws-load-balancer-controller.yml.tpl", {
+    templatefile("${path.module}/helm-values/aws-load-balancer-controller.yaml.tpl", {
       cluster_name = module.eks.cluster_name
       region       = "us-west-2"
       vpc_id       = module.vpc.vpc_id
@@ -154,7 +154,7 @@ resource "helm_release" "loki" {
     helm_release.kube_prometheus_stack,
   ]
 
-  values = [file("${path.module}/helm-values/loki.yml")]
+  values = [file("${path.module}/helm-values/loki.yaml")]
 }
 
 # =============================================================================
@@ -173,7 +173,7 @@ resource "helm_release" "tempo" {
     helm_release.kube_prometheus_stack,
   ]
 
-  values = [file("${path.module}/helm-values/tempo.yml")]
+  values = [file("${path.module}/helm-values/tempo.yaml")]
 }
 
 # =============================================================================
@@ -190,7 +190,7 @@ resource "helm_release" "kube_prometheus_stack" {
   # CRDs are large; allow extra time on first install
   timeout = 600
 
-  values = [file("${path.module}/helm-values/kube-prometheus-stack.yml")]
+  values = [file("${path.module}/helm-values/kube-prometheus-stack.yaml")]
 
   depends_on = [
     kubernetes_storage_class_v1.gp3,
@@ -216,7 +216,7 @@ resource "helm_release" "otel_collector" {
   version    = "0.125.0"
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
-  values = [file("${path.module}/helm-values/otel-collector.yml")]
+  values = [file("${path.module}/helm-values/otel-collector.yaml")]
 
   depends_on = [
     helm_release.kube_prometheus_stack,

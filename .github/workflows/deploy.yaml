@@ -8,7 +8,7 @@ on:
       - "charts/**"
       - "go.mod"
       - "go.sum"
-      - ".github/workflows/deploy.yml"
+      - ".github/workflows/deploy.yaml"
 
 concurrency:
   group: deploy-dev

@@ -7,7 +7,7 @@
 #   role_arn      — IRSA IAM role the service account assumes
 #
 # Chart reference:
-#   https://github.com/aws/eks-charts/blob/master/stable/aws-load-balancer-controller/values.yml
+#   https://github.com/aws/eks-charts/blob/master/stable/aws-load-balancer-controller/values.yaml
 
 # ---- Required controller settings ----
 clusterName: ${cluster_name}
