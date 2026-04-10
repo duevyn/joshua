@@ -101,8 +101,6 @@ func getEnv(key, fallback string) string {
 }
 
 func main() {
-	// Bootstrap: stderr JSON logger from the very first line so any pre-OTel
-	// failure is captured in structured form by kubectl/docker logs.
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -121,11 +119,6 @@ func main() {
 		}
 	}()
 
-	// Upgrade the default logger to a fan-out: every record goes to stderr
-	// (so kubectl/docker logs still works even if the collector is unreachable)
-	// AND to the OTel log pipeline (so records land in Loki). The otelslog
-	// bridge automatically stamps each record with the active trace_id and
-	// span_id, giving Grafana click-through correlation between logs and traces.
 	slog.SetDefault(slog.New(newFanoutHandler(
 		slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}),
 		otelslog.NewHandler(serviceName),
@@ -133,8 +126,6 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// InfoContext carries the otelhttp span context, so the record is
-		// automatically stamped with trace_id/span_id by the otelslog bridge.
 		slog.InfoContext(r.Context(), "hello world request",
 			"method", r.Method,
 			"path", r.URL.Path,
@@ -149,7 +140,6 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	// Wrap mux with OTEL HTTP middleware — records span + http.server.* metrics
 	handler := otelhttp.NewHandler(mux, serviceName,
 		otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents),
 	)
@@ -207,8 +197,6 @@ func (f *fanoutHandler) Handle(ctx context.Context, r slog.Record) error {
 		if !h.Enabled(ctx, r.Level) {
 			continue
 		}
-		// Clone so handlers that mutate the record (e.g. adding attrs) don't
-		// interfere with siblings seeing the same value.
 		if err := h.Handle(ctx, r.Clone()); err != nil {
 			errs = append(errs, err)
 		}

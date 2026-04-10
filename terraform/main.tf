@@ -100,9 +100,9 @@ module "eks" {
       ami_type       = "AL2023_x86_64_STANDARD"
       instance_types = ["m7i-flex.large"]
 
-      min_size     = 3
-      max_size     = 3
-      desired_size = 3
+      min_size     = 2
+      max_size     = 2
+      desired_size = 2
 
       disk_size = 20
     }
@@ -126,9 +126,6 @@ module "eks" {
   tags = local.tags
 }
 
-# =============================================================================
-# EBS CSI Driver — IRSA role so the addon can create/manage EBS volumes
-# =============================================================================
 module "ebs_csi_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.0"
@@ -146,10 +143,6 @@ module "ebs_csi_irsa" {
   tags = local.tags
 }
 
-# =============================================================================
-# AWS Load Balancer Controller — IRSA role for ingress provisioning
-# The Helm chart is deployed in the observability stack (step 2).
-# =============================================================================
 module "aws_load_balancer_controller_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.0"
@@ -167,9 +160,6 @@ module "aws_load_balancer_controller_irsa" {
   tags = local.tags
 }
 
-# =============================================================================
-# ECR
-# =============================================================================
 resource "aws_ecr_repository" "joshua-server" {
   name                 = "joshua-server"
   force_delete         = true
@@ -181,7 +171,6 @@ resource "aws_ecr_repository" "joshua-server" {
 
   tags = local.tags
 }
-
 
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"

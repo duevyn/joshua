@@ -27,9 +27,6 @@ config:
       timeout: 2s
 
   exporters:
-    # Metrics → Prometheus via remote_write. The collector's built-in
-    # remote_write_queue (enabled by default) handles backpressure; we
-    # leave it at chart defaults.
     prometheusremotewrite:
       endpoint: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
       tls:
@@ -37,9 +34,6 @@ config:
       resource_to_telemetry_conversion:
         enabled: true
 
-    # Traces → Tempo via OTLP/gRPC. sending_queue + retry_on_failure
-    # protect against transient Tempo unavailability without dropping
-    # spans on the floor.
     otlp/tempo:
       endpoint: "tempo.monitoring.svc.cluster.local:4317"
       tls:
@@ -54,11 +48,6 @@ config:
         max_interval: 30s
         max_elapsed_time: 300s
 
-    # Logs → Loki via OTLP/HTTP. Loki 3.x exposes a native OTLP receiver
-    # at /otlp/v1/logs; the otlphttp exporter automatically appends
-    # /v1/logs to the configured endpoint. The deprecated standalone
-    # `loki` exporter is intentionally not used — `otlphttp` against
-    # native OTLP is the migration path documented by both projects.
     otlphttp/loki:
       endpoint: "http://loki.monitoring.svc.cluster.local:3100/otlp"
       tls:

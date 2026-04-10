@@ -1,16 +1,3 @@
-# =============================================================================
-# EKS-managed control plane components
-#
-# AWS runs the API server, controller manager, scheduler, and etcd on its
-# own infrastructure and does not expose their /metrics endpoints to
-# workloads. kube-proxy listens on 127.0.0.1:10249 on each node and is
-# unreachable from a Prometheus pod without patching the daemonset.
-#
-# Leaving these scrape jobs enabled produces persistent `TargetDown`
-# firings and KubeControllerManagerDown / KubeSchedulerDown / etc.
-# alerts that drown out real signal. Disabling them is the standard
-# production fix for kube-prometheus-stack on EKS.
-# =============================================================================
 kubeControllerManager:
   enabled: false
 kubeScheduler:
@@ -21,7 +8,7 @@ kubeProxy:
   enabled: false
 
 grafana:
-  adminPassword: "" # unused — existingSecret below overrides
+  adminPassword: ""
   admin:
     existingSecret: grafana-admin-credentials
     userKey: admin-user
@@ -44,11 +31,6 @@ grafana:
     - name: Tempo
       type: tempo
       access: proxy
-      # NOTE: verify the port post-deploy with `kubectl get svc -n monitoring tempo`.
-      # The grafana/tempo single-binary chart has used both 3100 (mirroring
-      # Loki convention) and 3200 (matching tempo's binary default) across
-      # versions. If queries fail with "data source unavailable", swap to
-      # 3200 and re-apply.
       url: http://tempo.monitoring.svc.cluster.local:3100
       jsonData:
         httpMethod: GET
@@ -56,10 +38,6 @@ grafana:
           datasourceUid: loki
           filterByTraceID: true
           filterBySpanID: false
-        # serviceMap powers the topology view in the Tempo UI. It reads
-        # service-graph metrics that Tempo's metricsGenerator writes to
-        # Prometheus. The generator is NOT enabled in tempo.yaml yet, so
-        # this view will be empty until that's added in a future iteration.
         serviceMap:
           datasourceUid: prometheus
         nodeGraph:
@@ -69,12 +47,6 @@ grafana:
       access: proxy
       url: http://loki.monitoring.svc.cluster.local:3100
       jsonData:
-        # OTLP-source logs put trace_id in Loki structured metadata, not
-        # in the log body. The legacy regex matcher (default) only finds
-        # `"traceID":"..."` substrings in the body, which our slog/otelslog
-        # pipeline never produces. matcherType: label tells Grafana to
-        # read the structured metadata field directly. Requires Grafana
-        # 10.2+ (kube-prometheus-stack 70.x ships 11.x — fine).
         derivedFields:
           - datasourceUid: tempo
             name: TraceID
@@ -89,27 +61,14 @@ prometheus:
   prometheusSpec:
     enableRemoteWriteReceiver: true
 
-    # Time-based retention is the primary cap. retentionSize is a safety
-    # net so a sudden cardinality spike (e.g. a new label with high
-    # uniqueness) can't fill the PVC before time-based eviction runs.
-    # Keep retentionSize comfortably below the PVC size to leave headroom
-    # for the WAL, head block, and in-flight compactions.
     retention: 15d
     retentionSize: "32GB"
 
-    # Compress the WAL on disk. Standard production setting — small CPU
-    # cost in exchange for meaningful PVC IO and space reduction.
     walCompression: true
 
-    # Explicit intervals so behavior is predictable across chart upgrades
-    # that may change defaults.
     scrapeInterval: 30s
     evaluationInterval: 30s
 
-    # Watch every selector-matching object in any namespace, not just
-    # those carrying the chart's release label. Required for application
-    # ServiceMonitors / PodMonitors / PrometheusRules / Probes created
-    # outside this chart to be picked up.
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false

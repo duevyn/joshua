@@ -12,22 +12,10 @@ tempo:
         http:
           endpoint: "0.0.0.0:4318"
 
-  # ---- Trace retention ----
-  # Without this, Tempo's compactor never deletes old blocks and the PVC
-  # fills until the pod OOMs or the disk runs out. 168h = 7 days, the
-  # typical incident-investigation lookback window. Pair with the PVC
-  # size below: at our request volume the disk will never be the binding
-  # constraint, but in production tempo deployments this is the field
-  # operators forget and then learn about at 3am.
   compactor:
     compaction:
       block_retention: 168h
 
-# ---- Resource requests / limits ----
-# The single-binary tempo process is dominated by ingester WAL memory and
-# compactor block reads. These values fit comfortably on m7i-flex.large
-# and give the scheduler something concrete to bin-pack against. Raise
-# memory before CPU if you start seeing OOMKills under trace volume.
 resources:
   requests:
     cpu: 100m
